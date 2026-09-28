@@ -12,10 +12,12 @@ packaging==26.3
 pandas==3.0.5
 pluggy==1.6.0
 psycopg2-binary==2.9.12
+pyarrow==25.0.1
 Pygments==2.21.0
 PySocks==1.7.1
 pytest==9.1.1
 python-dateutil==2.9.0.post0
+python-dotenv==1.2.3
 requests==2.34.2
 selenium==4.47.0
 six==1.17.0
