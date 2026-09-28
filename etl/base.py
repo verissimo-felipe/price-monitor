@@ -8,6 +8,16 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+
+class ExtractionError(Exception):
+    """Falha de contrato na etapa de extração.
+
+    Erro nomeado em vez de TypeError/ValueError crus: a DAG consegue separar
+    "a fonte quebrou o contrato" (retry adianta) de "o código tem bug" (retry
+    só repete a falha), e quem chama captura o que sabe tratar.
+    """
+
+
 class Extractor(ABC):
     schema: tuple[str, ...] = ()
 
@@ -22,11 +32,11 @@ class Extractor(ABC):
         df = self.extract()
 
         if not isinstance(df, pd.DataFrame):
-            raise TypeError(f"{nome}.extract() deve retornar um DataFrame")
+            raise ExtractionError(f"{nome}.extract() deve retornar um DataFrame")
 
         faltando = set(self.schema) - set(df.columns)
         if faltando:
-            raise ValueError(
+            raise ExtractionError(
                 f"{nome}: colunas ausentes no retorno {sorted(faltando)}"
                 )
         if df.empty:
