@@ -5,11 +5,7 @@ __pycache__/
 .env
 logs/
 config/
-<<<<<<< Updated upstream
 staging/
 01_INSTRUCTIONS.md
-=======
-01_INSTRUCTIONS.md
 CLAUDE.md
->>>>>>> Stashed changes
 ROADMAP.md
