@@ -3,6 +3,8 @@
 O pytest carrega este arquivo sozinho — nenhum teste precisa importá-lo. Basta
 declarar o nome da fixture como argumento da função de teste.
 """
+import os
+
 import pandas as pd
 import pytest
 from sqlalchemy import text
@@ -14,9 +16,13 @@ TABELA_DE_TESTE = "cotacoes_teste"
 def engine():
     """Conexão com o Postgres de teste — ou pula os testes que dependem dele.
 
-    PULAR, nunca falhar: quem clonou o repositório e ainda não subiu o Docker
-    não deve ver a suíte vermelha por isso. Mas o motivo aparece no relatório,
-    então também não vira silêncio.
+    NA MÁQUINA DE ALGUÉM: pular, nunca falhar. Quem clonou o repositório e ainda
+    não subiu o Docker não deve ver a suíte vermelha por isso — mas o motivo
+    aparece no relatório, então também não vira silêncio.
+
+    NO CI: `EXIGE_POSTGRES=1` transforma o pulo em falha. Lá, pular é o mesmo
+    que não testar: o build ficaria verde sem ter exercitado a idempotência,
+    que é justamente o que o CI existe para proteger.
     """
     from etl.load import get_engine
 
@@ -25,11 +31,13 @@ def engine():
         with eng.connect() as conn:
             conn.execute(text("SELECT 1"))
     except Exception as exc:
-        pytest.skip(
+        motivo = (
             f"Postgres indisponível ({type(exc).__name__}). Suba com: "
-            "docker compose -f docker-compose.data.yml up -d postgres",
-            allow_module_level=True,
+            "docker compose -f docker-compose.data.yml up -d postgres"
         )
+        if os.getenv("EXIGE_POSTGRES") == "1":
+            pytest.fail(motivo, pytrace=False)
+        pytest.skip(motivo)
     return eng
 
 
