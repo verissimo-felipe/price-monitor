@@ -3,6 +3,8 @@
 __pycache__/
 *.pyc
 .env
+logs/
+config/
 <<<<<<< Updated upstream
 staging/
 01_INSTRUCTIONS.md
