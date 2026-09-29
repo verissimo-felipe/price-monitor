@@ -1,5 +1,7 @@
 # Price Monitor — Pipeline de ETL com Python e Airflow
 
+[![CI](https://github.com/verissimo-felipe/price-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/verissimo-felipe/price-monitor/actions/workflows/ci.yml)
+
 Pipeline de **ETL orquestrado por Apache Airflow** que coleta cotações e
 notícias de três tipos de fonte, transforma e valida os dados com **Pandas**
 e carrega em **PostgreSQL**. Todo o desenvolvimento segue **Git Flow**.
