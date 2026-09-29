@@ -1,0 +1,67 @@
+# Ajustes ao docker-compose.yaml OFICIAL do Airflow.
+#
+# O Compose lê este arquivo automaticamente junto com o docker-compose.yaml,
+# então você não precisa editar o arquivo baixado:
+#
+#   curl -LfO 'https://airflow.apache.org/docs/apache-airflow/stable/docker-compose.yaml'
+#   docker compose up airflow-init && docker compose up -d
+#
+# O que ele resolve (o erro nº 1 de quem começa com Airflow):
+#   ModuleNotFoundError: No module named 'etl'
+# A DAG roda DENTRO do container — a pasta etl/ precisa estar montada lá e o
+# PYTHONPATH precisa enxergá-la. Não é bug do seu código.
+#
+# ⚠️ A lista de volumes é repetida por inteiro de propósito: dependendo da
+# versão do Compose, a lista do override SUBSTITUI a original em vez de somar.
+# Repetindo, funciona nos dois casos.
+#
+# Conferido contra o compose oficial do Airflow 3.3.2 (29/09/2026): os serviços
+# são airflow-apiserver, airflow-scheduler, airflow-dag-processor, airflow-worker,
+# airflow-triggerer e airflow-init. Se o compose que você baixar for de outra
+# versão, confira antes com:  grep -nE "^  airflow-" docker-compose.yaml
+#
+# ⚠️ Nome que não existe no arquivo base NÃO é ignorado: o Compose cria um
+# serviço novo só com o que está aqui, sem imagem, e falha com
+# "no image, build or extends".
+
+x-projeto: &projeto
+  # Docker Engine nativo (WSL2/Linux) não resolve host.docker.internal sozinho
+  # — isso é conveniência do Docker Desktop. Aqui a gente pede explicitamente.
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  environment:
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"   # tira as DAGs de exemplo da UI
+    PYTHONPATH: /opt/airflow                # faz o Airflow enxergar o pacote etl/
+    STAGING_DIR: /opt/airflow/staging
+    # Credenciais do banco de destino. Em produção viriam de um cofre
+    # (Airflow Connections/Variables ou Secrets Manager), não daqui.
+    # ⚠️ DB_HOST e FIXO, nao ${DB_HOST:-...}. O Compose le o .env da pasta para
+    #    resolver ${...}, e la esta "localhost" — certo para rodar na sua
+    #    maquina, errado aqui dentro (no container, localhost e o proprio
+    #    container). O default nunca entraria em jogo. E a unica variavel cujo
+    #    valor muda conforme o contexto; as outras seguem vindo do .env.
+    DB_HOST: host.docker.internal
+    # A porta e a MESMA nos dois contextos: localhost:5433 da sua maquina,
+    # host.docker.internal:5433 daqui. Por isso continua vindo do .env.
+    DB_PORT: ${DB_PORT:-5433}
+    DB_NAME: ${DB_NAME:-monitor}
+    DB_USER: ${DB_USER:-monitor}
+    DB_PASSWORD: ${DB_PASSWORD:-monitor}
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./config:/opt/airflow/config
+    - ./etl:/opt/airflow/etl          # ← sem isto, o import de etl.* falha
+    - ./staging:/opt/airflow/staging  # ← onde as tasks trocam os arquivos
+
+services:
+  airflow-apiserver: *projeto      # a UI (era "airflow-webserver" no Airflow 2)
+  airflow-scheduler: *projeto
+  # Novidade do Airflow 3: quem LE e parseia as DAGs nao e mais o scheduler.
+  # Sem etl/ montado e PYTHONPATH aqui, o import falha na origem e a DAG nem
+  # chega a aparecer na UI.
+  airflow-dag-processor: *projeto
+  airflow-worker: *projeto
+  airflow-triggerer: *projeto
+  airflow-init: *projeto
