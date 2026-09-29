@@ -1,0 +1,59 @@
+# Quality gate: a suite roda a cada push e a cada PR, com Postgres de verdade.
+#
+# POR QUE COM BANCO E NAO SO COM OS TESTES RAPIDOS:
+# a idempotencia da carga vive na constraint UNIQUE e no ON CONFLICT, que quem
+# executa e o Postgres. Um CI sem banco deixaria de fora justamente a garantia
+# mais importante do pipeline.
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  testes:
+    name: pytest
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: monitor
+          POSTGRES_PASSWORD: monitor
+          POSTGRES_DB: monitor
+        ports:
+          - 5432:5432
+        # O job so comeca depois que o banco aceita conexao. Sem o healthcheck,
+        # os primeiros testes correriam contra um Postgres ainda subindo e a
+        # suite falharia de forma intermitente - o pior tipo de CI.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: monitor
+      DB_USER: monitor
+      DB_PASSWORD: monitor
+      # Sem isto, um banco fora do ar viraria "5 skipped" e o build ficaria
+      # VERDE sem ter testado a carga. No CI, pular e o mesmo que nao testar.
+      EXIGE_POSTGRES: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Rodar a suite
+        run: pytest
