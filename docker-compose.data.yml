@@ -9,6 +9,15 @@
 # ⚠️ O Airflow sobe um Postgres PRÓPRIO (banco de metadados dele). Este aqui é
 # outro: é o DESTINO dos seus dados, onde a tabela `cotacoes` vai existir.
 
+# ⚠️ PROJETO SEPARADO — não remova esta linha.
+#
+# Sem ela, o Compose deriva o nome do projeto da PASTA (price-monitor), o mesmo
+# que o compose do Airflow usa. E como os dois arquivos declaram um serviço
+# chamado `postgres`, o Compose os trata como o MESMO serviço: subir um DESTRÓI
+# o outro, em qualquer direção. Aconteceu em 29/09 — o `up` deste arquivo
+# apagou o banco de metadados do Airflow.
+name: monitor-data
+
 services:
   postgres:
     image: postgres:16
